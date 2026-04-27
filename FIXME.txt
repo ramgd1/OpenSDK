@@ -1,0 +1,28 @@
+1- When It Gets Demoed it just starts to drive in a circle 
+
+ - CURRENT FIX : Disable and ReEnable the bot using the hotkey
+
+2- Same as Number 1 but when it gets scored on (not always)
+
+3- Sometimes its ignoring boost (big pills) and i dont think this is a model issue 
+
+ - THEORY: The sdk might lag and when the game starts new session after a goal gets scored it will keep rememebering that boost pill as if its off and it will never be on ( basically mis information)
+
+4- Same as Number 2 but instead it turns off completely and i need to do the same fix to fix this 
+
+5- i sometime notice that the bot does staright moving straight or just moving left or right but then  gains back control as if it was drunk but then undrunked and i know this is an model error 
+
+6- sometimes the model is in the orange team but seddenly plays as if its in the blue team (or it thinks so) and it sometimes score an own goal
+
+7- mid game sometimes it loses control and as if in the drunk thing i said in number 5 but now mid game
+
+8- barely airrolls but the same model in the other team but in rlbot sdk (one of the best sdks better than mine 1000%)  does alot of them and their bot just feels more active and doesn't make mistakes tho its same model files
+
+9- ball chaser sometimes it forgets the opponent is even there (prolly due to number 6)
+
+10- also about the airroll it sometime does hold the airroll and sometimes it barely does that and i see the model mine just most of the time lets the ball alone for the oppo and i see the rlbot sdk is doing uhm more aierals than my sdk
+
+11- when mechanoid on my sdk tries to go to a far aerial (like full field)  i notice mine misses but rlbots always gets it right
+
+
+Match that i found in these all these bugs ended 5-16  for rlbot sdk 

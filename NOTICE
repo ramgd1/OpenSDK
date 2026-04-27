@@ -1,0 +1,25 @@
+OpenSDK — Rocket League AI Framework
+Copyright (c) 2026 OpenSDK Authors
+
+This project is a fork of RLMarlBot, originally created by:
+  - marlburrow (https://github.com/marlburrow)
+  - flaryx32 (https://github.com/flaryx32)
+
+Most of the foundational work belongs to them. This fork enhances bot play,
+updates game offsets for compatibility, and improves overall stability.
+
+This project is licensed under the Creative Commons Attribution-NonCommercial 4.0
+International License (CC BY-NC 4.0). You are free to:
+
+  - Share: copy and redistribute the material in any medium or format
+  - Adapt: remix, transform, and build upon the material
+
+Under the following terms:
+
+  - Attribution: You must give appropriate credit and indicate if changes were made.
+  - NonCommercial: You may NOT use the material for commercial purposes.
+
+If you purchased this software, you were scammed. This project is 100% free and
+open source. Report sellers to the project maintainers.
+
+Full license text: https://creativecommons.org/licenses/by-nc/4.0/legalcode

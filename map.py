@@ -1,0 +1,441 @@
+
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+import pygame
+import sys
+
+import time
+from collections import deque
+from rlbot.utils.structures.game_data_struct import GameTickPacket, PlayerInfo
+from rlsdk_python import RLSDK
+
+# NOTE: visual overlay module — hooks into game rendering pipeline
+# OpenSDK watermark: 4F70656E53444B5F434342594E433430
+
+class MiniMap:
+    def __init__(self, sdk: RLSDK=None, player_index=0):
+
+        self.time = time.time()
+
+        self.running = False
+        self.padding = 500
+        self.goal_height = 880
+        self.max_world_x = 4210.0 + self.padding  
+        self.max_world_y = 6140.0 + self.padding  
+        self.world_width = 8420.0 + 2 * self.padding  
+        self.world_height = 12280.0 + 2 * self.padding  
+     
+        self.initial_screen_width = 820
+        self.initial_screen_height = 1024
+        self.screen_width = self.initial_screen_width
+        self.screen_height = self.initial_screen_height
+        self.scale_factor = 1.0
+        self.aspect_ratio = self.initial_screen_width / self.initial_screen_height
+        self.player_name_font = None
+        self.fps_font = None
+
+        self.game = None
+        self.field_info = None
+        self.TRAIL_SIZE = 120
+        self.car_trails = {}
+        self.ball_trail =  deque(maxlen=self.TRAIL_SIZE)
+
+        self.blue_color = (40, 169, 255)
+        self.red_color = (239, 92 ,48)
+        
+        self.game_tick_packet = None
+        self.sdk = sdk
+        self.player_index = player_index
+        
+        self.disabled = True
+     
+
+    
+    def set_game_tick_packet(self, game_tick_packet, player_index=0):
+        self.game_tick_packet = game_tick_packet
+        self.player_index = player_index
+        self.enable()
+        
+        
+    def disable(self):
+        self.disabled = True
+        
+    def enable(self):
+        self.disabled = False
+
+    def update_scale_factor(self, new_width, new_height):
+        
+        new_ratio = new_width / new_height
+        if new_ratio > self.aspect_ratio:
+            
+            new_width = int(new_height * self.aspect_ratio)
+        else:
+            
+            new_height = int(new_width / self.aspect_ratio)
+
+        self.screen_width = new_width
+        self.screen_height = new_height
+        self.scale_factor = new_width / self.initial_screen_width
+        pygame.display.set_mode((new_width, new_height), pygame.RESIZABLE)
+
+    def world_to_screen(self, x, y):
+        
+        center_x = self.max_world_x + self.padding
+        center_y = self.max_world_y + self.padding
+
+        
+        location_x = center_x - x
+        location_y = center_y - y
+
+        
+        location_x_rate = location_x / (self.world_width + 2 * self.padding)
+        location_y_rate = location_y / (self.world_height + 2 * self.padding)
+
+        
+        screen_x = self.screen_width * location_x_rate
+        screen_y = self.screen_height * location_y_rate
+
+        return screen_x, screen_y
+    def main(self):
+        pygame.init()
+        screen = pygame.display.set_mode((self.screen_width, self.screen_height), pygame.RESIZABLE)
+
+        
+        pygame.display.set_caption("Marlbot MiniMap (Bot vision)")
+        background_color = (0, 0, 0)
+        clock = pygame.time.Clock()
+
+        self.player_name_font = pygame.font.Font(None, int(20 * self.scale_factor))
+        self.fps_font = pygame.font.Font(None, int(15 * self.scale_factor))
+        self.big_message = pygame.font.Font(None, int(50 * self.scale_factor))
+        self.info_font = pygame.font.Font(None, int(15 * self.scale_factor))
+
+        self.running = True
+        while self.running:
+            try:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.running = False
+                    elif event.type == pygame.VIDEORESIZE:
+                        self.update_scale_factor(event.w, event.h)
+
+                screen.fill(background_color)
+
+                field_surface = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
+                field_surface.fill((0, 0, 0, 0)) 
+
+                self.draw_field(field_surface)
+
+                screen.blit(field_surface, (0, 0))
+
+                object_surface = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
+                object_surface.fill((0, 0, 0, 0)) 
+                
+                
+                if self.disabled:
+                    text = self.big_message.render("Bot disabled", True, (255, 0, 0))
+                    text_rect = text.get_rect(center=(self.screen_width // 2, self.screen_height // 2))
+                    screen.blit(text, text_rect)
+                else:
+
+                    if self.game_tick_packet:
+                        try:
+                            self.draw_game_elements(object_surface, self.game_tick_packet)
+                            screen.blit(object_surface, (0, 0))
+                            
+                            
+                            if self.game_tick_packet.game_info.is_kickoff_pause:
+                                text = self.big_message.render("KICKOFF !", True, (0, 255, 255))
+                                text_rect = text.get_rect(center=(self.screen_width // 2, self.screen_height // 2))
+                                screen.blit(text, text_rect)
+                                
+                            if self.game_tick_packet.game_info.is_match_ended:
+                                text = self.big_message.render("Match ended", True, (0, 255, 255))
+                                text_rect = text.get_rect(center=(self.screen_width // 2, self.screen_height // 2))
+                                screen.blit(text, text_rect)
+                                
+                                
+                            self.draw_info(screen)
+                            
+                            
+                        except Exception as e:
+                            print(e)
+
+
+
+                
+            
+                fps = str(int(clock.get_fps()))
+                fps_text =  self.fps_font.render(fps + " FPS", True, pygame.Color('white'))
+                screen.blit(fps_text, (self.screen_width - 60, 10))
+
+                pygame.display.flip()
+                clock.tick(60)
+            except (SystemExit, KeyboardInterrupt):
+                self.running = False
+                break
+                
+        
+
+       
+        pygame.quit()
+        sys.exit()
+        
+        
+    def draw_info(self, screen):
+        gtp : GameTickPacket = self.game_tick_packet
+        
+        
+        
+               
+        
+        frame_num = gtp.game_info.frame_num
+        
+        text = self.info_font.render(f"Frame: {frame_num}", True, (255, 255, 255))
+        screen.blit(text, (10, 10))
+        
+        
+        
+        time_elapsed = round(gtp.game_info.seconds_elapsed, 2)
+        text = self.info_font.render(f"Time elapsed: {time_elapsed}", True, (255, 255, 255))
+        screen.blit(text, (10, 30))
+
+        
+        
+        round_active = gtp.game_info.is_round_active
+        text = self.info_font.render(f"Round active: {round_active}", True, (255, 255, 255))
+        screen.blit(text, (10, 50))
+        
+        
+        
+        is_kickoff_pause = gtp.game_info.is_kickoff_pause
+        text = self.info_font.render(f"Kickoff pause: {is_kickoff_pause}", True, (255, 255, 255))
+        screen.blit(text, (10, 70))
+        
+        
+        
+        is_match_ended = gtp.game_info.is_match_ended
+        text = self.info_font.render(f"Match ended: {is_match_ended}", True, (255, 255, 255))
+        screen.blit(text, (10, 90))
+        
+        
+        
+        is_overtime = gtp.game_info.is_overtime
+        text = self.info_font.render(f"Overtime: {is_overtime}", True, (255, 255, 255))
+        screen.blit(text, (10, 110))
+        
+        
+        
+        player_index = self.player_index
+        text = self.info_font.render(f"Player index: {player_index}", True, (255, 255, 255))
+        screen.blit(text, (10, 130))
+        
+        
+        
+       
+        
+        
+   
+        
+
+
+    def draw_field(self, screen):
+
+        
+        field = [
+            (-2944, 5120),
+            (-893, 5120),
+            (-893, 5120 + 880),
+            (893, 5120 + 880),
+            (893, 5120),
+            (2944, 5120),
+            (4096, 3968),
+            (4096, -3968),
+            (2944, -5120),
+            (893, -5120),
+            (893, -5120 - 880),
+            (-893, -5120 - 880),
+            (-893, -5120),
+            (-2944, -5120),
+            (-4096, -3968),
+            (-4096, 3968),
+            (-2944, 5120)
+        ]
+
+        # # Transform each world coordinate into a screen coordinate
+        # field_screen = [self.world_to_screen(x, y) for x, y in field]
+
+        # # Draw the polygon on the screen
+        # pygame.draw.polygon(screen, (255, 255, 255), field_screen, 2)
+
+        # # ligne centrale
+
+        # center_line = [
+        #     (-4096, 0),
+        #     (4096, 0)
+        # ]
+
+        # center_line_screen = [self.world_to_screen(x, y) for x, y in center_line]
+
+        # pygame.draw.lines(screen, (255, 255, 255), False, center_line_screen, 2)
+
+
+        # cercle central
+
+        pygame.draw.circle(screen, (255, 255, 255), self.world_to_screen(0, 0), int(60 * self.scale_factor), 2)
+
+
+        top_surface_polygone = [
+            (-2944, 5120),
+            (-893, 5120),
+            (-893, 5120 + 880),
+            (893, 5120 + 880),
+            (893, 5120),
+            (2944, 5120),
+            (4096, 3968),
+            (4096, -3968),
+            (4096, 0),
+            (-4096, 0),
+            (-4096, 3968),
+            (-2944, 5120)
+        ]
+
+        top_surface_screen = [self.world_to_screen(x, y) for x, y in top_surface_polygone]
+
+        pygame.draw.polygon(screen, self.red_color + (100,), top_surface_screen)
+
+        bottom_surface_polygone = [
+            (-2944, -5120),
+            (-893, -5120),
+            (-893, -5120 - 880),
+            (893, -5120 - 880),
+            (893, -5120),
+            (2944, -5120),
+            (4096, -3968),
+            (4096, 3968),
+            (4096, 0),
+            (-4096, 0),
+            (-4096, -3968),
+            (-2944, -5120)
+        ]
+
+        bottom_surface_screen = [self.world_to_screen(x, y) for x, y in bottom_surface_polygone]
+
+        pygame.draw.polygon(screen, self.blue_color + (100,), bottom_surface_screen)
+
+
+
+    def draw_game_elements(self, screen, game_tick_packet: GameTickPacket):
+
+        
+       
+        cars = game_tick_packet.game_cars
+        
+        for car_index in range(0, game_tick_packet.num_cars):
+            car = cars[car_index]
+   
+            color = car.team == 0 and self.blue_color or self.red_color
+           
+            
+
+            radius = int(15 * self.scale_factor) + int(car.physics.location.z / 100)
+
+        
+
+            if car_index not in self.car_trails:
+                self.car_trails[car_index] = deque(maxlen=self.TRAIL_SIZE) 
+
+
+            x, y = self.world_to_screen(car.physics.location.x, car.physics.location.y)
+
+            self.car_trails[car_index].appendleft((x, y))
+
+             
+            for i, (trail_x, trail_y) in enumerate(self.car_trails[car_index]):
+                
+                trail_color =  (color[0], color[1], color[2], int(255 * (1 - i / len(self.car_trails[car_index]))))  # Fade opacity
+
+                trail_radius = max(1, radius * (1 - i / len(self.car_trails[car_index])))  # Shrink radius
+                pygame.draw.circle(screen, trail_color, (trail_x, trail_y), trail_radius)
+
+            pygame.draw.circle(screen, color, (x, y), radius)  
+
+            nickname = car.name
+            text = self.player_name_font.render(nickname, True, color)
+            text_rect = text.get_rect(center=(x, y - int(40 * self.scale_factor)))
+            screen.blit(text, text_rect)
+
+            boost_amount = car.boost
+            boost_amount = boost_amount / 100  
+            
+           
+            
+
+            
+
+            boost_bar_width = int(50 * self.scale_factor)
+            boost_bar_height = int(5 * self.scale_factor)
+            boost_bar_x = x - boost_bar_width // 2
+            boost_bar_y = y - int(30 * self.scale_factor)
+
+            pygame.draw.rect(screen, (255, 0, 0), (boost_bar_x, boost_bar_y, boost_bar_width, boost_bar_height))
+            pygame.draw.rect(screen, (0, 255, 0), (boost_bar_x, boost_bar_y, int(boost_bar_width * boost_amount), boost_bar_height))
+            
+            
+            if self.player_index == car_index:
+                pygame.draw.circle(screen, (255, 255, 0), (x, y), int(radius * 1.5), 2)
+                
+                
+               
+            
+        
+        boostpads = self.sdk.field.boostpads
+
+        for boostpad_index in range(0, game_tick_packet.num_boost):
+            pad = boostpads[boostpad_index]
+            
+ 
+        
+            x, y = self.world_to_screen(pad.location.x,pad.location.y)
+            radius = pad.is_big and 10 or 5
+
+            if pad.is_active:
+                
+                pygame.draw.circle(screen, (255, 255, 0), (x, y),  int(radius * self.scale_factor))
+            else:
+                
+                pygame.draw.circle(screen, (255, 255, 0), (x, y), int(radius * self.scale_factor), 2)
+             
+                remaining = pad.get_remaining_time()
+                if remaining > 0:
+                    text = self.player_name_font.render(str(round(remaining, 1)), True, (255, 255, 255))
+                    text_rect = text.get_rect(center=(x, y + int(20 * self.scale_factor)))
+                    screen.blit(text, text_rect)
+                    
+                    
+
+        ball = game_tick_packet.game_ball
+         
+        radius = int(20 * self.scale_factor) + int(ball.physics.location.z / 100)
+
+        x, y = self.world_to_screen(ball.physics.location.x, ball.physics.location.y)
+
+        
+
+        self.ball_trail.appendleft((x, y))
+
+        for i, (trail_x, trail_y) in enumerate(self.ball_trail):
+            
+            trail_color =  (255, 255, 255, int(255 * (1 - i / len(self.ball_trail))) )
+            trail_radius = max(1, radius * (1 - i / len(self.ball_trail)))
+            pygame.draw.circle(screen, trail_color, (trail_x, trail_y), trail_radius)
+
+        pygame.draw.circle(screen, (255, 255, 255), (x, y),  radius)
+
+
+# THIS PROJECT IS PROTECTED BY THE CC BY-NC 4.0 license
+
+
+
+
+

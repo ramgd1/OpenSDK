@@ -1,0 +1,33 @@
+# Install with: pip install -r requirements.txt
+# OpenSDK — Fork of RLMarlBot by marlburrow & flaryx32
+# CC BY-NC 4.0 — Non-Commercial Use Only
+# If you paid for this software, you were scammed.
+
+# ── PyTorch (CPU/GPU — change +cu118 suffix for CUDA if needed) ───────────────
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torchvision
+torch
+
+# ── Memory ────────────────────────────────────────────────────────────────────
+pymem
+frida
+websockets
+
+# ── Numeric / ML ──────────────────────────────────────────────────────────────
+numpy
+
+# ── Console / UI ──────────────────────────────────────────────────────────────
+colorama
+prompt_toolkit
+art
+tqdm
+tabulate
+flatbuffers
+pygame-ce
+
+# LAST UPDATED IS S22 (v2.67) 2026-03-26
+# IF YOU ARE USING THIS FOR A DIFFERENT VERSION, YOU WILL NEED TO UPDATE THE OFFSETS 
+# UPDATED WITH LOVE BY RAMGD (https://github.com/ramgd1)       
+# MY DISCORD : ramgd 
+# MY ALT DISCORD : q7cj 
+# i used a lil bit help from claude btw
