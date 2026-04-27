@@ -17,7 +17,6 @@ This fork (OpenSDK) adds:
 - Enhanced bot play and improved decision making
 - Updated game offsets for latest Rocket League versions
 - Improved compatibility across different setups
-- Additional integrity and anti-piracy measures
 
 ## License
 
@@ -39,7 +38,7 @@ to play the game by reading game state directly from memory and writing controll
 python main.py --bot nexto --minimap --monitoring
 ```
 
-## Anti-Scam Notice
+## Notice
 
 This code is publicly available and will always be free. Anyone selling it is violating
 the CC BY-NC 4.0 license. The code contains hidden watermarks and integrity markers
