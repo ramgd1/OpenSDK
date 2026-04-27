@@ -48,3 +48,5 @@ If you encounter someone selling this:
 1. Do not pay them
 2. Report them to the community
 3. Point them to this repository
+
+-# if u saw this and u didnt leave a star fuck u
